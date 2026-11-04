@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
-import { Alert, ConfirmDialog, Field, Loading } from '../components/Common.jsx';
+import { Alert, ConfirmDialog, Field, Loading, PageHeader } from '../components/Common.jsx';
+import { BellIcon, ChevronIcon, LogoutIcon, ShieldIcon } from '../components/Icons.jsx';
 import { fullDate, socialErrorMessage } from '../format.js';
+import { logoUrl } from '../services.js';
 import { disablePush, enablePush, permission, pushStatus, pushSupport } from '../push.js';
 
 const PROVIDERS = [
@@ -12,14 +14,14 @@ const PROVIDERS = [
 ];
 
 export default function SettingsPage() {
-  const { user, refresh } = useAuth();
+  const { user, refresh, logout } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [message, setMessage] = useState(null); // { type, text }
 
   useEffect(() => {
     const linked = searchParams.get('linked');
     const error = searchParams.get('error');
-    if (linked) setMessage({ type: 'success', text: `${linked === 'kakao' ? '카카오' : 'Google'} 계정을 연결했습니다.` });
+    if (linked) setMessage({ type: 'success', text: `${linked === 'kakao' ? '카카오' : 'Google'} 계정을 연결했어요.` });
     if (error) setMessage({ type: 'error', text: socialErrorMessage(error) });
     if (linked || error) setSearchParams({}, { replace: true });
   }, [searchParams, setSearchParams]);
@@ -27,12 +29,37 @@ export default function SettingsPage() {
   if (!user) return <Loading />;
 
   return (
-    <div className="stack narrow">
-      <h1>설정</h1>
-      {message && <Alert type={message.type}>{message.text}</Alert>}
+    <div className="page">
+      <PageHeader title="내 정보" />
+      <Alert type={message?.type}>{message?.text}</Alert>
       <ProfileSection user={user} refresh={refresh} />
-      <IdentitySection user={user} refresh={refresh} setMessage={setMessage} />
       <NotificationSection user={user} refresh={refresh} />
+      <IdentitySection user={user} refresh={refresh} setMessage={setMessage} />
+
+      <section className="card card-tight">
+        <ul className="rows link-rows">
+          <li>
+            <Link to="/notifications" className="row">
+              <BellIcon size={22} />
+              <span className="row-main"><strong>알림 목록</strong></span>
+              <ChevronIcon className="chev" />
+            </Link>
+          </li>
+          <li>
+            <Link to="/privacy" className="row">
+              <ShieldIcon size={22} />
+              <span className="row-main"><strong>개인정보처리방침</strong></span>
+              <ChevronIcon className="chev" />
+            </Link>
+          </li>
+          <li>
+            <button type="button" className="row" onClick={logout}>
+              <LogoutIcon size={22} />
+              <span className="row-main"><strong>로그아웃</strong></span>
+            </button>
+          </li>
+        </ul>
+      </section>
     </div>
   );
 }
@@ -60,19 +87,22 @@ function ProfileSection({ user, refresh }) {
   };
 
   return (
-    <section className="card">
-      <h2>내 정보</h2>
-      <dl className="details">
-        <dt>이메일</dt>
-        <dd>{user.email || <span className="muted">없음 (카카오에서 이메일 제공에 동의하지 않음)</span>}</dd>
-      </dl>
-      <form onSubmit={onSubmit} className="form inline-form">
+    <section className="card section">
+      <div className="profile">
+        <img src="/images/face.webp" alt="" width="394" height="321" />
+        <div>
+          <p className="profile-name">{user.nickname}님</p>
+          <p className="muted small">{user.email || '이메일 없음 (카카오에서 이메일 제공에 동의하지 않음)'}</p>
+        </div>
+      </div>
+      <form onSubmit={onSubmit} className="form">
         <Field label="닉네임" error={error}>
-          <input type="text" maxLength={30} value={nickname} onChange={(e) => setNickname(e.target.value)} />
+          <input type="text" maxLength={30} value={nickname} onChange={(e) => { setNickname(e.target.value); setSaved(false); }} />
         </Field>
-        <button type="submit" className="btn btn-primary" disabled={busy || nickname.trim() === user.nickname}>저장</button>
+        <button type="submit" className="btn btn-soft" disabled={busy || !nickname.trim() || nickname.trim() === user.nickname}>
+          {saved ? '저장했어요' : '닉네임 저장'}
+        </button>
       </form>
-      {saved && <p className="muted small">저장했습니다.</p>}
     </section>
   );
 }
@@ -82,6 +112,8 @@ function IdentitySection({ user, refresh, setMessage }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const connected = Object.fromEntries(user.identities.map((i) => [i.provider, i]));
+  // 화면에서는 소셜 로그인만 쓰므로, 마지막 소셜 연결을 해제하면 로그인할 방법이 없어진다.
+  const canUnlink = user.identities.length > 1;
 
   const onUnlink = async () => {
     setBusy(true);
@@ -89,7 +121,7 @@ function IdentitySection({ user, refresh, setMessage }) {
     try {
       await api(`/api/me/identities/${target[2]}`, { method: 'DELETE' });
       await refresh();
-      setMessage({ type: 'success', text: `${target[1]} 연결을 해제했습니다.` });
+      setMessage({ type: 'success', text: `${target[1]} 연결을 해제했어요.` });
       setTarget(null);
     } catch (err) {
       setError(err.message);
@@ -99,38 +131,40 @@ function IdentitySection({ user, refresh, setMessage }) {
   };
 
   return (
-    <section className="card">
+    <section className="card section">
       <h2>로그인 수단</h2>
-      <ul className="list">
-        <li className="list-row static">
-          <span className="list-main">
-            <strong>이메일 + 비밀번호</strong>
-            <span className="muted small">
-              {user.hasPassword ? '사용 중' : user.email ? '비밀번호 찾기로 비밀번호를 만들 수 있습니다' : '사용 안 함'}
-            </span>
-          </span>
-        </li>
+      <ul className="rows">
         {PROVIDERS.map((provider) => {
           const [key, label, path] = provider;
           const identity = connected[key];
           return (
-            <li key={key} className="list-row static">
-              <span className="list-main">
-                <strong>{label}</strong>
-                <span className="muted small">{identity ? `${fullDate(identity.connectedAt.slice(0, 10))} 연결` : '연결 안 됨'}</span>
-              </span>
-              {identity ? (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setTarget(provider)}>연결 해제</button>
-              ) : (
-                <a className="btn btn-ghost btn-sm" href={`/oauth2/authorization/${path}`}>연결</a>
-              )}
+            <li key={key}>
+              <div className="row" style={{ padding: '10px 0', cursor: 'default' }}>
+                {key === 'GOOGLE' ? (
+                  <span className="logo logo-sm">
+                    <img src={logoUrl('google.com')} alt="" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />
+                  </span>
+                ) : (
+                  <span className="logo logo-sm" style={{ background: '#fee500', border: 0 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#191919" d="M12 3C6.5 3 2 6.5 2 10.8c0 2.8 1.9 5.2 4.7 6.6l-1 3.7c-.1.3.3.6.6.4l4.4-2.9c.4 0 .9.1 1.3.1 5.5 0 10-3.5 10-7.9S17.5 3 12 3z" /></svg>
+                  </span>
+                )}
+                <span className="row-main">
+                  <strong>{label}</strong>
+                  <span className="muted small">{identity ? `${fullDate(identity.connectedAt.slice(0, 10))} 연결` : '연결 안 됨'}</span>
+                </span>
+                {identity
+                  ? canUnlink && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setTarget(provider)}>해제</button>
+                  : <a className="btn btn-soft btn-sm" href={`/oauth2/authorization/${path}`}>연결</a>}
+              </div>
             </li>
           );
         })}
       </ul>
+      {!canUnlink && <p className="field-hint">연결된 계정이 하나뿐이면 해제할 수 없어요. 다른 계정을 먼저 연결해 주세요.</p>}
       {target && (
-        <ConfirmDialog title="연결 해제" confirmText="해제" onConfirm={onUnlink} onCancel={() => { setTarget(null); setError(''); }} busy={busy}>
-          <p>{target[1]} 계정으로는 더 이상 로그인할 수 없습니다.</p>
+        <ConfirmDialog title="연결 해제" confirmText="해제하기" onConfirm={onUnlink} onCancel={() => { setTarget(null); setError(''); }} busy={busy}>
+          <p>{target[1]} 계정으로는 더 이상 로그인할 수 없어요.</p>
           <Alert>{error}</Alert>
         </ConfirmDialog>
       )}
@@ -144,6 +178,7 @@ function NotificationSection({ user, refresh }) {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const changed = enabled !== user.notification.enabled || Number(daysBefore) !== user.notification.daysBefore;
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -162,28 +197,27 @@ function NotificationSection({ user, refresh }) {
   };
 
   return (
-    <section className="card">
+    <section className="card section">
       <h2>결제 알림</h2>
-      <p className="muted small">
-        매일 오전 9시 전후에 곧 결제될 구독을 상단 🔔 알림으로 알려드립니다. 아래에서 이 기기 푸시를 켜면 휴대폰·PC 알림으로도 받을 수 있어요.
-      </p>
+      <p className="muted small">매일 오전 9시쯤 곧 결제될 구독을 🔔 알림으로 알려드려요. 아래에서 이 기기 푸시를 켜면 휴대폰 알림으로도 받아요.</p>
       <form onSubmit={onSubmit} className="form">
-        <label className="checkbox">
-          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        <label className="check">
+          <input type="checkbox" checked={enabled} onChange={(e) => { setEnabled(e.target.checked); setSaved(false); }} />
           결제 알림 받기
         </label>
-        <Field label="알림 시점">
-          <select value={daysBefore} onChange={(e) => setDaysBefore(e.target.value)} disabled={!enabled}>
-            <option value={1}>결제 1일 전</option>
-            <option value={3}>결제 3일 전</option>
-            <option value={7}>결제 7일 전</option>
-          </select>
-        </Field>
-        <Alert>{error}</Alert>
-        <div className="form-actions">
-          <button type="submit" className="btn btn-primary" disabled={busy}>저장</button>
+        <div className="field">
+          <span className="field-label">알림 시점</span>
+          <div className="segmented light" role="radiogroup" aria-label="알림 시점">
+            {[1, 3, 7].map((d) => (
+              <button key={d} type="button" role="radio" aria-checked={Number(daysBefore) === d} disabled={!enabled}
+                      className={Number(daysBefore) === d ? 'active' : ''} onClick={() => { setDaysBefore(d); setSaved(false); }}>
+                {d}일 전
+              </button>
+            ))}
+          </div>
         </div>
-        {saved && <p className="muted small">저장했습니다.</p>}
+        <Alert>{error}</Alert>
+        <button type="submit" className="btn btn-soft" disabled={busy || !changed}>{saved && !changed ? '저장했어요' : '알림 설정 저장'}</button>
       </form>
       <DevicePush notificationsEnabled={user.notification.enabled} />
     </section>
@@ -226,51 +260,49 @@ function DevicePush({ notificationsEnabled }) {
     }
   };
 
-  const onEnable = () => run(enablePush, '이 기기에서 푸시를 받도록 설정했습니다.');
-  const onDisable = () => run(disablePush, '이 기기의 푸시를 껐습니다.');
+  const onEnable = () => run(enablePush, '이 기기에서 푸시를 받도록 설정했어요.');
+  const onDisable = () => run(disablePush, '이 기기의 푸시를 껐어요.');
   const onTest = () => run(
     () => api('/api/push/test', { method: 'POST' }),
-    (r) => (r.sent > 0 ? `테스트 알림을 보냈습니다 (${r.sent}/${r.devices}대). 몇 초 안에 도착해요.` : '보내지 못했습니다. 잠시 후 다시 시도해 주세요.'),
+    (r) => (r.sent > 0 ? `테스트 알림을 보냈어요 (${r.sent}/${r.devices}대). 몇 초 안에 도착해요.` : '보내지 못했어요. 잠시 후 다시 시도해 주세요.'),
   );
 
   return (
-    <div className="push-box">
+    <div className="section" style={{ borderTop: '1px solid var(--line)', paddingTop: 16 }}>
       <h3>이 기기 푸시</h3>
       {support === 'ios-install' && (
         <div className="push-guide">
           <p>iPhone·iPad는 <b>홈 화면에 추가한 서비 앱</b>에서만 푸시를 받을 수 있어요 (iOS 16.4 이상).</p>
           <ol>
-            <li>Safari 하단의 공유 버튼(□↑)을 누릅니다.</li>
-            <li><b>홈 화면에 추가</b>를 누릅니다.</li>
-            <li>홈 화면의 서비 아이콘으로 열고, 로그인한 뒤 여기서 푸시를 켭니다.</li>
+            <li>Safari 공유 버튼(□↑) → <b>홈 화면에 추가</b> (iOS 26은 ⋯ → 공유)</li>
+            <li><b>웹 앱으로 열기</b>를 켜고 추가</li>
+            <li>홈 화면의 서비로 열고 로그인한 뒤 여기서 푸시 켜기</li>
           </ol>
         </div>
       )}
-      {support === 'unsupported' && <p className="muted small">이 브라우저는 웹 푸시를 지원하지 않습니다. Chrome, Edge, Safari, Firefox 최신 버전을 사용해 주세요.</p>}
-      {support === 'insecure' && <p className="muted small">https 주소에서만 푸시를 켤 수 있습니다.</p>}
+      {support === 'unsupported' && <p className="muted small">이 브라우저는 웹 푸시를 지원하지 않아요. Chrome, Edge, Safari, Firefox 최신 버전을 써 주세요.</p>}
+      {support === 'insecure' && <p className="muted small">https 주소에서만 푸시를 켤 수 있어요.</p>}
 
-      {state && !state.serverEnabled && <p className="muted small">서버에 푸시가 아직 설정되지 않았습니다. 🔔 알림은 그대로 받을 수 있어요.</p>}
+      {state && !state.serverEnabled && <p className="muted small">서버에 푸시가 아직 설정되지 않았어요. 🔔 알림은 그대로 받을 수 있어요.</p>}
 
       {state && state.serverEnabled && support === 'supported' && (
         <>
           <p className="small">
-            {state.subscribed ? '✅ 이 기기에서 푸시를 받고 있어요.' : '이 기기에서는 푸시를 받지 않고 있어요.'}
-            <span className="muted"> · 푸시를 받는 기기 {state.deviceCount}대</span>
+            {state.subscribed ? '이 기기에서 푸시를 받고 있어요.' : '이 기기에서는 푸시를 받지 않고 있어요.'}
+            <span className="muted"> · 푸시 받는 기기 {state.deviceCount}대</span>
           </p>
           {permission() === 'denied' && (
-            <p className="muted small">알림 권한이 차단돼 있습니다. 브라우저 주소창 왼쪽 자물쇠(또는 휴대폰 설정)에서 알림을 허용한 뒤 다시 시도해 주세요.</p>
+            <p className="muted small">알림 권한이 차단돼 있어요. 브라우저 주소창 왼쪽 자물쇠(또는 휴대폰 설정)에서 알림을 허용한 뒤 다시 시도해 주세요.</p>
           )}
-          {!notificationsEnabled && <p className="muted small">위의 “결제 알림 받기”가 꺼져 있으면 푸시도 오지 않습니다.</p>}
-          <div className="form-actions">
-            {state.subscribed ? (
-              <>
-                <button type="button" className="btn btn-ghost" onClick={onTest} disabled={busy}>테스트 알림</button>
-                <button type="button" className="btn btn-ghost" onClick={onDisable} disabled={busy}>이 기기 푸시 끄기</button>
-              </>
-            ) : (
-              <button type="button" className="btn btn-primary" onClick={onEnable} disabled={busy}>이 기기에서 푸시 받기</button>
-            )}
-          </div>
+          {!notificationsEnabled && <p className="muted small">위의 “결제 알림 받기”가 꺼져 있으면 푸시도 오지 않아요.</p>}
+          {state.subscribed ? (
+            <div className="btn-row">
+              <button type="button" className="btn btn-ghost" onClick={onTest} disabled={busy}>테스트 알림</button>
+              <button type="button" className="btn btn-ghost" onClick={onDisable} disabled={busy}>푸시 끄기</button>
+            </div>
+          ) : (
+            <button type="button" className="btn btn-primary btn-block" onClick={onEnable} disabled={busy}>이 기기에서 푸시 받기</button>
+          )}
         </>
       )}
       {message && <Alert type={message.type}>{message.text}</Alert>}

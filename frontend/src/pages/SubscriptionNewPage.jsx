@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router';
 import { api } from '../api.js';
+import { PageHeader } from '../components/Common.jsx';
 import SubscriptionForm from '../components/SubscriptionForm.jsx';
 
 export default function SubscriptionNewPage() {
@@ -11,9 +12,9 @@ export default function SubscriptionNewPage() {
   };
 
   return (
-    <div className="stack narrow">
-      <h1>구독 등록</h1>
-      <SubscriptionForm submitText="등록" onSubmit={onSubmit} onCancel={() => navigate(-1)} />
+    <div className="page">
+      <PageHeader title="구독 추가" back="/subscriptions" />
+      <SubscriptionForm submitText="저장하기" onSubmit={onSubmit} />
     </div>
   );
 }
