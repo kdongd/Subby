@@ -12,6 +12,7 @@ import SubscriptionDetailPage from './pages/SubscriptionDetailPage.jsx';
 import StatsPage from './pages/StatsPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import UnsubscribePage from './pages/UnsubscribePage.jsx';
+import PrivacyPage from './pages/PrivacyPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/unsubscribe" element={<UnsubscribePage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
       <Route element={<RequireAuth><Layout /></RequireAuth>}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/subscriptions" element={<SubscriptionListPage />} />
