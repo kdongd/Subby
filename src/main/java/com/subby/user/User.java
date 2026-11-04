@@ -93,8 +93,4 @@ public class User {
         this.notifyEnabled = enabled;
         this.notifyDaysBefore = daysBefore;
     }
-
-    public void disableNotification() {
-        this.notifyEnabled = false;
-    }
 }

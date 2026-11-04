@@ -33,7 +33,7 @@ class InternalJobIntegrationTest extends IntegrationTestSupport {
         mockMvc.perform(post("/internal/jobs/daily").header("X-Job-Token", "test-job-token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ratesSaved").value(1))
-                .andExpect(jsonPath("$.mailsSent").value(0));
+                .andExpect(jsonPath("$.usersNotified").value(0));
     }
 
     @Test

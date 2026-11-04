@@ -60,7 +60,7 @@ public class UserService {
     }
 
     private NotificationSettings notificationSettings(User user) {
-        return new NotificationSettings(user.isNotifyEnabled(), user.getNotifyDaysBefore(), user.hasEmail());
+        return new NotificationSettings(user.isNotifyEnabled(), user.getNotifyDaysBefore());
     }
 
     private User findUser(Long userId) {

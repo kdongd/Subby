@@ -42,8 +42,7 @@ public class SecurityConfig {
                                 "/api/auth/signup",
                                 "/api/auth/login",
                                 "/api/auth/password-reset/request",
-                                "/api/auth/password-reset/confirm",
-                                "/api/notifications/unsubscribe").permitAll()
+                                "/api/auth/password-reset/confirm").permitAll()
                         .requestMatchers(
                                 "/internal/**",
                                 "/actuator/health", "/actuator/health/**",

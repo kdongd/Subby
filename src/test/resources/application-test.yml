@@ -1,6 +1,10 @@
 app:
   base-url: http://localhost:8080
   job-token: test-job-token
-  unsubscribe-secret: test-unsubscribe-secret
   exchange:
     fetch-on-startup: false
+  # 테스트 전용 키. 운영 키는 Render 환경 변수에만 넣는다.
+  push:
+    public-key: BD-9NlMan8RL2CQidKYPEVrW2niC2jSUD8yYtDrQ9GzhT4JzIbcvxgdT7N9CFkPcHFI1CU726dwa6IDGuHsMKh8
+    private-key: T1NuwKrrhifc49lizKjSVK70-ssL6QZCZrZgsR-OHOE
+    subject: mailto:test@example.com

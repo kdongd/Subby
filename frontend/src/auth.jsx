@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { api, setUnauthorizedHandler } from './api.js';
+import { detachPushOnLogout } from './push.js';
 
 const AuthContext = createContext(null);
 
@@ -45,6 +46,7 @@ export function AuthProvider({ children }) {
   }, [refresh]);
 
   const logout = useCallback(async () => {
+    await detachPushOnLogout();
     try {
       await api('/api/auth/logout', { method: 'POST' });
     } finally {
