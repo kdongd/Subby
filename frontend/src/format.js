@@ -76,3 +76,23 @@ export const SOCIAL_ERROR_MESSAGES = {
 export function socialErrorMessage(code) {
   return SOCIAL_ERROR_MESSAGES[code] || '소셜 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.';
 }
+
+/** 결제일까지 남은 날 표현: 오늘 / 내일 / N일 후 / 지남 */
+export function relativeDay(iso) {
+  const today = new Date(`${todayIso()}T00:00:00`);
+  const date = new Date(`${iso}T00:00:00`);
+  const days = Math.round((date - today) / 86400000);
+  if (days < 0) return '지난 결제';
+  if (days === 0) return '오늘';
+  if (days === 1) return '내일';
+  return `${days}일 후`;
+}
+
+/** 알림 받은 시각: 방금 / N분 전 / N시간 전 / M월 D일 */
+export function timeAgo(isoInstant) {
+  const diff = (Date.now() - new Date(isoInstant).getTime()) / 1000;
+  if (diff < 60) return '방금';
+  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+  return new Date(isoInstant).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
+}

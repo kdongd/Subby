@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.subby.exchange.ExchangeRateClient;
 import com.subby.global.security.UserPrincipal;
 import com.subby.mail.MailSender;
+import com.subby.push.PushSender;
 import com.subby.user.User;
 import com.subby.user.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -22,7 +23,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
  * 통합 테스트 공통 설정. 모든 통합 테스트가 같은 설정을 써서 스프링 컨텍스트와 DB 컨테이너를 한 번만 띄운다.
- * 메일 발송과 환율 API는 실제로 호출하지 않도록 가짜(Mock)로 바꾼다.
+ * 메일 발송, 환율 API, 푸시 발송은 실제로 호출하지 않도록 가짜(Mock)로 바꾼다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -53,10 +54,13 @@ public abstract class IntegrationTestSupport {
     @MockitoBean
     protected ExchangeRateClient exchangeRateClient;
 
+    @MockitoBean
+    protected PushSender pushSender;
+
     @AfterEach
     void cleanDatabase() {
         jdbcTemplate.execute("""
-                TRUNCATE TABLE notification_logs, subscriptions, user_identities, password_reset_tokens,
+                TRUNCATE TABLE notifications, push_subscriptions, subscriptions, user_identities, password_reset_tokens,
                     login_attempts, exchange_rates, users, spring_session_attributes, spring_session
                 RESTART IDENTITY CASCADE
                 """);

@@ -12,14 +12,14 @@
 | 회원 | 이메일 가입·로그인, Google·카카오 로그인, 로그인 수단 연결·해제, 비밀번호 재설정(메일), 5회 실패 시 15분 잠금 |
 | 구독 | 등록·수정·삭제·해지, 매주·매월·매년 결제, 원화·달러 결제 |
 | 지출 | 다음 결제일, 이번 달 결제 예정액, 월 평균 환산액, 최근 6·12개월 월별 지출, 카테고리별 지출 |
-| 알림 | 결제 1·3·7일 전 메일 알림, 메일에서 바로 알림 끄기 |
+| 알림 | 결제 1·3·7일 전 사이트 안 알림(🔔) + 기기 웹 푸시(PWA), 기기별 켜기·끄기·테스트 |
 
 ## 기술 스택
 
 - **Backend**: Java 21, Spring Boot 3.5, Spring Security, Spring Session JDBC, Spring Data JPA, Flyway, PostgreSQL 17
 - **Frontend**: React 19, React Router, Vite, Recharts
 - **Test**: JUnit 5, Mockito, Testcontainers(PostgreSQL)
-- **Infra**: Docker, Render(서버), Neon(DB), GitHub Actions(CI/CD, 예약 실행), Brevo(메일), Frankfurter(환율)
+- **Infra**: Docker, Render(서버), Neon(DB), GitHub Actions(CI/CD, 예약 실행), Brevo(비밀번호 재설정 메일), Frankfurter(환율), Web Push(VAPID, JDK만으로 구현)
 
 ## 구조
 
@@ -44,7 +44,11 @@ GitHub ── PR·병합 ──> GitHub Actions (빌드·테스트) ── 통�
 | 다음 결제일은 **저장하지 않고 계산** | 매일 갱신하는 작업이 필요 없다. 첫 결제일 기준으로 계산해서 31일 구독이 28일로 굳지 않는다 |
 | 지난 결제는 결제일 환율, 앞으로의 결제는 최신 환율 | 과거 통계가 오늘 환율에 따라 바뀌지 않게 한다 |
 | 예약 작업을 **서버 스케줄러가 아니라 GitHub Actions**가 호출 | 무료 서버는 잠들면 스케줄러도 멈춘다. 외부 호출이 서버를 깨우면서 작업을 시킨다 |
-| 알림은 "N일 이내 + 미발송" 조건 + DB 유니크 제약 | 예약 실행이 하루 빠져도 다음 날 알림이 가고, 두 번 실행돼도 중복 메일이 없다 |
+| 알림은 "N일 이내 + 아직 알림 없음" 조건 + DB 유니크 제약 | 예약 실행이 하루 빠져도 다음 날 알림이 가고, 두 번 실행돼도 중복 알림이 없다 |
+| 결제 알림은 메일 대신 **웹 푸시 + 사이트 안 알림** | 무료 메일은 스팸함으로 가기 쉽고, 카카오 알림톡은 사업자·건당 비용이 필요하다. 푸시는 무료이고 PWA로 앱처럼 받을 수 있다 |
+| 웹 푸시 암호화(RFC 8291)·VAPID(RFC 8292)를 **JDK만으로** 구현 | 라이브러리 의존성을 늘리지 않는다. 표준 구현(npm http_ece)과 같은 결과가 나오는지 테스트로 확인 |
+| 푸시 주소는 Google·Apple·Mozilla·Microsoft 푸시 서버만 허용 | 서버가 그 주소로 요청을 보내므로, 아무 주소나 받으면 내부망 공격 통로(SSRF)가 된다 |
+| 푸시 실패해도 재시도하지 않음, 404·410이면 기기 삭제 | 사이트 안 알림이 원본이고 푸시는 보조. 만료된 구독은 정리한다 |
 | 메일은 SMTP가 아닌 **Brevo HTTP API** | Render 무료 서버는 SMTP 포트가 막혀 있다 |
 | 비밀번호 재설정 토큰은 **해시만 저장**, 30분, 1회용, 재설정 시 모든 세션 종료 | DB가 유출돼도 링크를 만들 수 없고, 탈취된 로그인도 끊긴다 |
 | Spring Boot 3.5 | 4.x는 설정 방식이 많이 바뀌었다. 3.5는 2026년 6월 오픈소스 지원이 끝났으므로 다음 단계로 4.x 전환이 필요하다 |
@@ -75,6 +79,7 @@ npm run dev
 
 - 메일 키가 없으면 메일 내용이 서버 로그에 출력됩니다. 비밀번호 재설정 링크도 로그에서 확인할 수 있습니다.
 - 소셜 로그인을 로컬에서 쓰려면 환경변수 `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`을 설정하고, 콘솔에 `http://localhost:8080/login/oauth2/code/{google|kakao}`를 등록한 뒤 `npm run build` 후 8080으로 접속하세요.
+- 기기 푸시를 로컬에서 쓰려면 `npx web-push generate-vapid-keys`로 키를 만들어 환경변수 `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`를 설정하세요. 키가 없어도 사이트 안 알림(🔔)은 동작합니다. 서비스 워커는 `npm run build` 후 8080으로 접속해야 확인할 수 있습니다(localhost는 https가 아니어도 허용됨).
 - 예약 작업 수동 실행: `curl -X POST -H "X-Job-Token: local-job-token" http://localhost:8080/internal/jobs/daily`
 - API 문서(로컬만): http://localhost:8080/swagger-ui.html
 
@@ -108,7 +113,15 @@ npm run dev
 | GET | `/api/dashboard` | 대시보드 |
 | GET | `/api/stats/monthly?months=6` | 월별 결제액 |
 | GET | `/api/stats/categories?yearMonth=2026-11` | 카테고리별 결제액 |
-| POST | `/api/notifications/unsubscribe` | 메일 링크로 알림 끄기 |
+| GET | `/api/notifications` | 사이트 안 알림 목록(최근 50개) + 안 읽은 수 |
+| GET | `/api/notifications/unread-count` | 안 읽은 알림 수 |
+| POST | `/api/notifications/{id}/read` | 알림 읽음 |
+| POST | `/api/notifications/read-all` | 모두 읽음 |
+| GET | `/api/push/public-key` | VAPID 공개키, 서버 푸시 사용 가능 여부 |
+| POST | `/api/push/status` | 이 기기(endpoint)가 구독 중인지, 내 기기 수 |
+| POST | `/api/push/subscriptions` | 이 기기 푸시 등록 |
+| POST | `/api/push/unsubscribe` | 이 기기 푸시 해제 |
+| POST | `/api/push/test` | 내 모든 기기로 테스트 푸시 |
 | POST | `/internal/jobs/daily` | 환율 수집 + 결제 알림 (`X-Job-Token` 헤더) |
 | GET | `/actuator/health` | 상태 확인 |
 

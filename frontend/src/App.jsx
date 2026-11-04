@@ -11,7 +11,7 @@ import SubscriptionNewPage from './pages/SubscriptionNewPage.jsx';
 import SubscriptionDetailPage from './pages/SubscriptionDetailPage.jsx';
 import StatsPage from './pages/StatsPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
-import UnsubscribePage from './pages/UnsubscribePage.jsx';
+import NotificationsPage from './pages/NotificationsPage.jsx';
 import PrivacyPage from './pages/PrivacyPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
@@ -22,7 +22,6 @@ export default function App() {
       <Route path="/signup" element={<GuestOnly><SignupPage /></GuestOnly>} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/unsubscribe" element={<UnsubscribePage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route element={<RequireAuth><Layout /></RequireAuth>}>
         <Route path="/" element={<DashboardPage />} />
@@ -31,6 +30,7 @@ export default function App() {
         <Route path="/subscriptions/:id" element={<SubscriptionDetailPage />} />
         <Route path="/stats" element={<StatsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

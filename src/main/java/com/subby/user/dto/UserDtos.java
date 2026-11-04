@@ -25,7 +25,8 @@ public final class UserDtos {
     public record IdentityResponse(AuthProvider provider, Instant connectedAt) {
     }
 
-    public record NotificationSettings(boolean enabled, int daysBefore, boolean available) {
+    /** 결제 알림 설정. 사이트 안 알림과 기기 푸시에 함께 적용된다. */
+    public record NotificationSettings(boolean enabled, int daysBefore) {
     }
 
     public record NicknameRequest(

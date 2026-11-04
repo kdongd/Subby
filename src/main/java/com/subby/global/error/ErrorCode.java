@@ -16,7 +16,9 @@ public enum ErrorCode {
     IDENTITY_NOT_FOUND(HttpStatus.NOT_FOUND, "연결되지 않은 로그인 수단입니다."),
     LAST_LOGIN_METHOD(HttpStatus.CONFLICT, "마지막 로그인 수단은 해제할 수 없습니다."),
     INVALID_RESET_TOKEN(HttpStatus.BAD_REQUEST, "링크가 만료되었거나 올바르지 않습니다. 비밀번호 찾기를 다시 진행해 주세요."),
-    INVALID_UNSUBSCRIBE_TOKEN(HttpStatus.BAD_REQUEST, "알림 해제 링크가 올바르지 않습니다."),
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
+    PUSH_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "서버에 푸시 알림이 설정되지 않았습니다."),
+    PUSH_NOT_SUBSCRIBED(HttpStatus.CONFLICT, "푸시를 받을 기기가 없습니다. 먼저 이 기기에서 푸시 받기를 켜 주세요."),
     SUBSCRIPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "구독을 찾을 수 없습니다."),
     ALREADY_CANCELED(HttpStatus.CONFLICT, "이미 해지된 구독입니다."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버에서 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");

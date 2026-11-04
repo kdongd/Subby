@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { Alert, ConfirmDialog, Field, Loading } from '../components/Common.jsx';
 import { fullDate, socialErrorMessage } from '../format.js';
+import { disablePush, enablePush, permission, pushStatus, pushSupport } from '../push.js';
 
 const PROVIDERS = [
   ['GOOGLE', 'Google', 'google'],
@@ -144,15 +145,6 @@ function NotificationSection({ user, refresh }) {
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  if (!user.notification.available) {
-    return (
-      <section className="card">
-        <h2>결제 알림</h2>
-        <p className="muted">이메일이 없어 알림을 받을 수 없습니다. 이메일을 제공하는 로그인 수단을 연결해 주세요.</p>
-      </section>
-    );
-  }
-
   const onSubmit = async (e) => {
     e.preventDefault();
     setBusy(true);
@@ -172,7 +164,9 @@ function NotificationSection({ user, refresh }) {
   return (
     <section className="card">
       <h2>결제 알림</h2>
-      <p className="muted small">매일 오전 9시 전후에 곧 결제될 구독을 메일로 알려드립니다. 메일이 보이지 않으면 스팸함을 확인해 주세요.</p>
+      <p className="muted small">
+        매일 오전 9시 전후에 곧 결제될 구독을 상단 🔔 알림으로 알려드립니다. 아래에서 이 기기 푸시를 켜면 휴대폰·PC 알림으로도 받을 수 있어요.
+      </p>
       <form onSubmit={onSubmit} className="form">
         <label className="checkbox">
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
@@ -191,6 +185,95 @@ function NotificationSection({ user, refresh }) {
         </div>
         {saved && <p className="muted small">저장했습니다.</p>}
       </form>
+      <DevicePush notificationsEnabled={user.notification.enabled} />
     </section>
+  );
+}
+
+function DevicePush({ notificationsEnabled }) {
+  const support = pushSupport();
+  const [state, setState] = useState(null); // { subscribed, deviceCount, serverEnabled }
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(null); // { type, text }
+
+  const load = useCallback(async () => {
+    try {
+      const [{ enabled: serverEnabled }, status] = await Promise.all([
+        api('/api/push/public-key'),
+        support === 'supported' ? pushStatus() : api('/api/push/status', { method: 'POST', body: {} }),
+      ]);
+      setState({ ...status, serverEnabled });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    }
+  }, [support]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const run = async (action, successText) => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await action();
+      await load();
+      setMessage({ type: 'success', text: typeof successText === 'function' ? successText(result) : successText });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onEnable = () => run(enablePush, '이 기기에서 푸시를 받도록 설정했습니다.');
+  const onDisable = () => run(disablePush, '이 기기의 푸시를 껐습니다.');
+  const onTest = () => run(
+    () => api('/api/push/test', { method: 'POST' }),
+    (r) => (r.sent > 0 ? `테스트 알림을 보냈습니다 (${r.sent}/${r.devices}대). 몇 초 안에 도착해요.` : '보내지 못했습니다. 잠시 후 다시 시도해 주세요.'),
+  );
+
+  return (
+    <div className="push-box">
+      <h3>이 기기 푸시</h3>
+      {support === 'ios-install' && (
+        <div className="push-guide">
+          <p>iPhone·iPad는 <b>홈 화면에 추가한 서비 앱</b>에서만 푸시를 받을 수 있어요 (iOS 16.4 이상).</p>
+          <ol>
+            <li>Safari 하단의 공유 버튼(□↑)을 누릅니다.</li>
+            <li><b>홈 화면에 추가</b>를 누릅니다.</li>
+            <li>홈 화면의 서비 아이콘으로 열고, 로그인한 뒤 여기서 푸시를 켭니다.</li>
+          </ol>
+        </div>
+      )}
+      {support === 'unsupported' && <p className="muted small">이 브라우저는 웹 푸시를 지원하지 않습니다. Chrome, Edge, Safari, Firefox 최신 버전을 사용해 주세요.</p>}
+      {support === 'insecure' && <p className="muted small">https 주소에서만 푸시를 켤 수 있습니다.</p>}
+
+      {state && !state.serverEnabled && <p className="muted small">서버에 푸시가 아직 설정되지 않았습니다. 🔔 알림은 그대로 받을 수 있어요.</p>}
+
+      {state && state.serverEnabled && support === 'supported' && (
+        <>
+          <p className="small">
+            {state.subscribed ? '✅ 이 기기에서 푸시를 받고 있어요.' : '이 기기에서는 푸시를 받지 않고 있어요.'}
+            <span className="muted"> · 푸시를 받는 기기 {state.deviceCount}대</span>
+          </p>
+          {permission() === 'denied' && (
+            <p className="muted small">알림 권한이 차단돼 있습니다. 브라우저 주소창 왼쪽 자물쇠(또는 휴대폰 설정)에서 알림을 허용한 뒤 다시 시도해 주세요.</p>
+          )}
+          {!notificationsEnabled && <p className="muted small">위의 “결제 알림 받기”가 꺼져 있으면 푸시도 오지 않습니다.</p>}
+          <div className="form-actions">
+            {state.subscribed ? (
+              <>
+                <button type="button" className="btn btn-ghost" onClick={onTest} disabled={busy}>테스트 알림</button>
+                <button type="button" className="btn btn-ghost" onClick={onDisable} disabled={busy}>이 기기 푸시 끄기</button>
+              </>
+            ) : (
+              <button type="button" className="btn btn-primary" onClick={onEnable} disabled={busy}>이 기기에서 푸시 받기</button>
+            )}
+          </div>
+        </>
+      )}
+      {message && <Alert type={message.type}>{message.text}</Alert>}
+    </div>
   );
 }

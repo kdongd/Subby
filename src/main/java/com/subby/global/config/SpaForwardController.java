@@ -11,7 +11,7 @@ public class SpaForwardController {
 
     @GetMapping({
             "/login", "/signup", "/forgot-password", "/reset-password",
-            "/subscriptions", "/subscriptions/**", "/stats", "/settings", "/unsubscribe", "/privacy"
+            "/subscriptions", "/subscriptions/**", "/stats", "/settings", "/notifications", "/privacy"
     })
     public String forward() {
         return "forward:/index.html";

@@ -177,7 +177,13 @@ input[type='checkbox'] { width: auto; }
 }
 
 @media (max-width: 560px) {
-  .topbar-inner { gap: 10px; }
+  .topbar-inner { gap: 8px; padding: 0 12px; }
+  .brand { font-size: 17px; }
+  .nav { gap: 0; }
+  .nav a { padding: 6px 7px; font-size: 14px; }
+  .topbar-user { gap: 4px; }
+  .topbar-user .btn-sm { padding: 6px 8px; font-size: 13px; }
+  .bell { width: 32px; }
   .hide-sm { display: none; }
   .grid-2 { grid-template-columns: 1fr; }
   .inline-form { flex-direction: column; align-items: stretch; }
@@ -187,4 +193,25 @@ input[type='checkbox'] { width: auto; }
   .list.card .list-row { padding: 12px 16px; }
   .doc { padding: 20px 16px; }
   .doc-table { font-size: 13px; }
+}
+
+/* 알림 */
+.bell { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; font-size: 18px; color: inherit; }
+.bell:hover, .bell.active { background: var(--hover); }
+.bell-badge { position: absolute; top: 2px; right: 0; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+.notification-row { width: 100%; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
+.notification-row:hover { background: var(--hover); }
+.notification-row .dot { width: 8px; height: 8px; border-radius: 50%; background: transparent; flex: none; }
+.notification-row.unread .dot { background: var(--primary); }
+.notification-row:not(.unread) strong { font-weight: 500; color: var(--muted); }
+.nowrap { white-space: nowrap; }
+.push-box { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+.push-box h3 { margin: 0; font-size: 15px; }
+.push-guide { background: var(--hover); border-radius: 8px; padding: 12px 14px; font-size: 14px; }
+.push-guide ol { margin: 6px 0 0; padding-left: 20px; }
+
+/* 홈 화면 앱(PWA)으로 열었을 때 아이폰 노치·홈 바 영역 피하기 */
+@supports (padding: env(safe-area-inset-top)) {
+  .topbar { padding-top: env(safe-area-inset-top); }
+  .container { padding-bottom: calc(48px + env(safe-area-inset-bottom)); }
 }

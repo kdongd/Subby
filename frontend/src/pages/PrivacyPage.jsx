@@ -27,7 +27,8 @@ export default function PrivacyPage() {
             <tr><td>Google 로그인</td><td>Google 계정 고유 식별자, 이메일, 이름(닉네임으로 사용)</td></tr>
             <tr><td>카카오 로그인</td><td>카카오 계정 고유 식별자, 닉네임, 이메일(이용자가 동의한 경우에만)</td></tr>
             <tr><td>서비스 이용 중 입력</td><td>구독 서비스명, 카테고리, 결제 금액과 통화, 결제 주기, 첫 결제일, 해지일, 메모</td></tr>
-            <tr><td>자동 생성</td><td>로그인 세션 정보, 로그인 실패 기록, 결제 알림 발송 기록</td></tr>
+            <tr><td>푸시 알림을 켠 경우</td><td>브라우저가 발급한 푸시 구독 정보(푸시 서버 주소와 암호화 키), 브라우저 종류(User-Agent)</td></tr>
+            <tr><td>자동 생성</td><td>로그인 세션 정보, 로그인 실패 기록, 결제 알림 내역(사이트 안 알림)</td></tr>
           </tbody>
         </table>
         <p className="muted small">서비스는 카드 번호, 계좌 번호 등 결제 수단 정보를 수집하지 않습니다.</p>
@@ -36,7 +37,8 @@ export default function PrivacyPage() {
         <ul>
           <li>회원 식별, 로그인, 계정 관리</li>
           <li>구독 목록, 다음 결제일, 지출 통계 제공</li>
-          <li>결제 예정 알림 메일과 비밀번호 재설정 메일 발송</li>
+          <li>결제 예정 알림(사이트 안 알림, 기기 푸시 알림) 제공</li>
+          <li>비밀번호 재설정 메일 발송</li>
           <li>무단 로그인 시도 차단 등 보안 유지</li>
         </ul>
 
@@ -46,6 +48,8 @@ export default function PrivacyPage() {
           <li>구독 정보는 이용자가 서비스 안에서 직접 삭제하면 즉시 지워집니다.</li>
           <li>로그인 세션: 마지막 이용 후 30분이 지나면 만료됩니다.</li>
           <li>비밀번호 재설정 링크: 발급 후 30분이 지나거나 한 번 사용하면 무효가 됩니다.</li>
+          <li>결제 알림 내역: 만든 날로부터 90일이 지나면 자동으로 지웁니다.</li>
+          <li>푸시 구독 정보: 이용자가 기기 푸시를 끄거나 로그아웃하면 지우며, 브라우저가 구독을 해지한 사실을 확인하면 자동으로 지웁니다.</li>
         </ul>
 
         <h2>4. 제3자 제공</h2>
@@ -60,7 +64,8 @@ export default function PrivacyPage() {
           <tbody>
             <tr><td>Render Services, Inc.</td><td>서버 운영</td><td>싱가포르</td></tr>
             <tr><td>Neon, Inc.</td><td>데이터베이스 보관</td><td>싱가포르</td></tr>
-            <tr><td>Sendinblue SAS (Brevo)</td><td>메일 발송 (이메일, 닉네임, 구독명, 결제일, 금액)</td><td>유럽연합</td></tr>
+            <tr><td>Sendinblue SAS (Brevo)</td><td>비밀번호 재설정 메일 발송 (이메일, 닉네임)</td><td>유럽연합</td></tr>
+            <tr><td>Google LLC, Apple Inc., Mozilla Corporation, Microsoft Corporation</td><td>기기 푸시 알림 전달 (이용자가 쓰는 브라우저 회사 1곳만 해당). 알림 내용은 암호화되어 전달되며 해당 업체는 내용을 볼 수 없습니다.</td><td>각 사 정책에 따름</td></tr>
             <tr><td>Google LLC, (주)카카오</td><td>소셜 로그인 인증</td><td>각 사 정책에 따름</td></tr>
           </tbody>
         </table>
@@ -75,7 +80,7 @@ export default function PrivacyPage() {
         <ul>
           <li>이용자는 언제든 자신의 개인정보 열람, 정정, 삭제, 처리 정지를 요청할 수 있습니다.</li>
           <li>닉네임과 구독 정보는 서비스 화면에서 직접 수정하거나 삭제할 수 있습니다.</li>
-          <li>결제 알림은 설정 화면이나 메일 하단 링크에서 끌 수 있습니다.</li>
+          <li>결제 알림과 기기 푸시는 설정 화면에서 끌 수 있습니다.</li>
           <li>소셜 로그인 연결은 설정 화면에서 해제할 수 있습니다.</li>
         </ul>
 
