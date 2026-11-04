@@ -1,0 +1,11 @@
+.git
+.github
+.gradle
+build
+out
+frontend/node_modules
+frontend/dist
+src/main/resources/static
+.idea
+.vscode
+docs

@@ -1,0 +1,6 @@
+app:
+  base-url: http://localhost:8080
+  job-token: test-job-token
+  unsubscribe-secret: test-unsubscribe-secret
+  exchange:
+    fetch-on-startup: false

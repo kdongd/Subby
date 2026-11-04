@@ -1,0 +1,22 @@
+# Gradle / Java
+.gradle/
+build/
+out/
+*.class
+
+# React 빌드 결과 (배포 시 Docker가 새로 만든다)
+src/main/resources/static/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# 비밀값
+.env
+*.env

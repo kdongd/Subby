@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/subby
+    username: subby
+    password: subby
+
+app:
+  job-token: ${JOB_TOKEN:local-job-token}

@@ -1,0 +1,17 @@
+# 로컬 개발용 PostgreSQL. 운영(Neon)과 같은 17 버전.
+# 실행: docker compose up -d   /  중지: docker compose down
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: subby-postgres
+    environment:
+      POSTGRES_DB: subby
+      POSTGRES_USER: subby
+      POSTGRES_PASSWORD: subby
+    ports:
+      - "5432:5432"
+    volumes:
+      - subby-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  subby-postgres-data:

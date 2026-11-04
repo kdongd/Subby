@@ -1,0 +1,29 @@
+name: Daily jobs
+
+# 매일 한국 시간 09:17쯤 서버를 깨워 환율 수집과 결제 알림 발송을 시킨다.
+# 정각은 GitHub 예약 실행이 몰려 늦어지기 쉬워서 17분으로 잡았다. 그래도 몇 분~수십 분 늦을 수 있다.
+# 공개 저장소에 60일 동안 커밋이 없으면 GitHub가 예약 실행을 자동으로 끈다. 그때는 Actions 탭에서 다시 켠다.
+on:
+  schedule:
+    - cron: '17 0 * * *'   # UTC 00:17 = 한국 09:17
+  workflow_dispatch:         # Actions 탭에서 수동 실행
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call daily job
+        env:
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
+        run: |
+          if [ -z "$APP_BASE_URL" ] || [ -z "$JOB_TOKEN" ]; then
+            echo "APP_BASE_URL 또는 JOB_TOKEN 시크릿이 없습니다."
+            exit 1
+          fi
+          # 무료 서버가 잠들어 있으면 깨어나는 데 최대 1분 정도 걸린다.
+          curl --fail --silent --show-error \
+            --max-time 150 --retry 2 --retry-delay 30 --retry-all-errors \
+            -X POST -H "X-Job-Token: $JOB_TOKEN" \
+            "$APP_BASE_URL/internal/jobs/daily"
