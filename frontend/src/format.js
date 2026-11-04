@@ -2,7 +2,7 @@ export const CATEGORIES = [
   ['OTT', 'OTT'],
   ['MUSIC', '음악'],
   ['AI', 'AI'],
-  ['CLOUD', '클라우드·저장소'],
+  ['CLOUD', '클라우드'],
   ['SOFTWARE', '소프트웨어'],
   ['GAME', '게임'],
   ['NEWS_BOOK', '뉴스·도서'],
@@ -11,16 +11,31 @@ export const CATEGORIES = [
 ];
 export const CATEGORY_LABEL = Object.fromEntries(CATEGORIES);
 
+/** 카테고리 색. 서로 붙어 있어도 구분되도록 밝기도 다르게 골랐다. */
+export const CATEGORY_COLORS = {
+  OTT: '#3d74e0',
+  MUSIC: '#f2a93b',
+  AI: '#20a07a',
+  CLOUD: '#8fb2ee',
+  SOFTWARE: '#7b5cd6',
+  GAME: '#e5627a',
+  NEWS_BOOK: '#2d9cb3',
+  SHOPPING: '#f4c94a',
+  ETC: '#9aa7bf',
+};
+
 export const CYCLES = [
   ['WEEKLY', '매주'],
   ['MONTHLY', '매월'],
   ['YEARLY', '매년'],
 ];
 export const CYCLE_LABEL = Object.fromEntries(CYCLES);
+/** "월 17,000원"처럼 금액 앞에 붙이는 말 */
+export const CYCLE_PREFIX = { WEEKLY: '주', MONTHLY: '월', YEARLY: '연' };
 
 export const CURRENCIES = [
-  ['KRW', '원 (KRW)'],
-  ['USD', '달러 (USD)'],
+  ['KRW', '원'],
+  ['USD', '달러'],
 ];
 
 export function krw(value) {
@@ -47,8 +62,11 @@ export function fullDate(iso) {
   return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-export function dDay(days) {
-  return days === 0 ? '오늘' : `D-${days}`;
+/** 결제일까지 남은 날 표시: 오늘 / 내일 / D-3 */
+export function dDayLabel(days) {
+  if (days === 0) return '오늘';
+  if (days === 1) return '내일';
+  return `D-${days}`;
 }
 
 /** 한국 시간 기준 오늘 날짜 (YYYY-MM-DD) */
@@ -60,28 +78,63 @@ export function thisMonthIso() {
   return todayIso().slice(0, 7);
 }
 
+/** 오늘부터 iso 날짜까지 남은 일수 */
+export function daysUntil(iso) {
+  const today = new Date(`${todayIso()}T00:00:00`);
+  const date = new Date(`${iso}T00:00:00`);
+  return Math.round((date - today) / 86400000);
+}
+
 export function monthLabel(yearMonth) {
   const [y, m] = yearMonth.split('-');
   return `${y}년 ${Number(m)}월`;
 }
 
+export function shiftMonth(yearMonth, delta) {
+  const [y, m] = yearMonth.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * 기준일에서 n주기 뒤 결제일. 서버 계산(BillingSchedule)과 같은 규칙:
+ * 그 달에 같은 날이 없으면 말일, 2월 29일 연간 결제는 평년에 2월 28일.
+ */
+export function addPeriod(iso, cycle, n) {
+  const [y, m, d] = iso.split('-').map(Number);
+  if (cycle === 'WEEKLY') {
+    const date = new Date(Date.UTC(y, m - 1, d + 7 * n));
+    return date.toISOString().slice(0, 10);
+  }
+  const monthIndex = cycle === 'YEARLY' ? (m - 1) : (m - 1 + n);
+  const year = cycle === 'YEARLY' ? y + n : y + Math.floor(monthIndex / 12);
+  const month = ((monthIndex % 12) + 12) % 12;
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const date = new Date(Date.UTC(year, month, Math.min(d, lastDay)));
+  return date.toISOString().slice(0, 10);
+}
+
+/** "11월 20일"처럼 짧게 */
+export function monthDay(iso) {
+  const [, m, d] = iso.split('-').map(Number);
+  return `${m}월 ${d}일`;
+}
+
 // 소셜 로그인 실패·연결 실패 코드별 안내 문구
 export const SOCIAL_ERROR_MESSAGES = {
-  EMAIL_ALREADY_REGISTERED: '이미 가입된 이메일입니다. 기존 방식으로 로그인한 뒤 설정에서 소셜 계정을 연결하세요.',
-  IDENTITY_IN_USE: '이미 다른 계정에 연결된 소셜 계정입니다.',
-  PROVIDER_ALREADY_LINKED: '이미 같은 종류의 소셜 계정이 연결되어 있습니다.',
-  access_denied: '소셜 로그인을 취소했습니다.',
+  EMAIL_ALREADY_REGISTERED: '같은 이메일로 가입된 계정이 있어요. 원래 쓰던 방법으로 로그인한 뒤 내 정보에서 계정을 연결해 주세요.',
+  IDENTITY_IN_USE: '이미 다른 서비 계정에 연결된 소셜 계정이에요.',
+  PROVIDER_ALREADY_LINKED: '이미 같은 종류의 소셜 계정이 연결되어 있어요.',
+  access_denied: '로그인을 취소했어요.',
 };
 
 export function socialErrorMessage(code) {
-  return SOCIAL_ERROR_MESSAGES[code] || '소셜 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+  return SOCIAL_ERROR_MESSAGES[code] || '로그인에 실패했어요. 잠시 후 다시 시도해 주세요.';
 }
 
-/** 결제일까지 남은 날 표현: 오늘 / 내일 / N일 후 / 지남 */
+/** 결제일까지 남은 날 표현: 오늘 / 내일 / N일 후 / 지난 결제 */
 export function relativeDay(iso) {
-  const today = new Date(`${todayIso()}T00:00:00`);
-  const date = new Date(`${iso}T00:00:00`);
-  const days = Math.round((date - today) / 86400000);
+  const days = daysUntil(iso);
   if (days < 0) return '지난 결제';
   if (days === 0) return '오늘';
   if (days === 1) return '내일';

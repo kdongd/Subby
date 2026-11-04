@@ -5,6 +5,7 @@ import { detachPushOnLogout } from './push.js';
 
 const AuthContext = createContext(null);
 
+// 로그인은 Google·카카오 화면을 거쳐 서버가 세션을 만들어 준다. 여기서는 내 정보 확인과 로그아웃만 한다.
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -35,16 +36,6 @@ export function AuthProvider({ children }) {
     });
   }, [navigate]);
 
-  const login = useCallback(async (email, password) => {
-    await api('/api/auth/login', { method: 'POST', body: { email, password }, skipAuthRedirect: true });
-    return refresh();
-  }, [refresh]);
-
-  const signup = useCallback(async (form) => {
-    await api('/api/auth/signup', { method: 'POST', body: form });
-    return refresh();
-  }, [refresh]);
-
   const logout = useCallback(async () => {
     await detachPushOnLogout();
     try {
@@ -55,10 +46,7 @@ export function AuthProvider({ children }) {
     }
   }, [navigate]);
 
-  const value = useMemo(
-    () => ({ user, loading, refresh, login, signup, logout }),
-    [user, loading, refresh, login, signup, logout],
-  );
+  const value = useMemo(() => ({ user, loading, refresh, logout }), [user, loading, refresh, logout]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

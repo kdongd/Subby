@@ -1,57 +1,25 @@
-import { useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
-import { useAuth } from '../auth.jsx';
-import { Alert, Field, SocialButtons } from '../components/Common.jsx';
+import { Link, useSearchParams } from 'react-router';
+import { Alert, SocialButtons, SplashArt } from '../components/Common.jsx';
 import { socialErrorMessage } from '../format.js';
-import AuthLayout from './AuthLayout.jsx';
 
+// 첫 화면. 로그인은 Google·카카오만 쓰고, 처음 로그인하면 자동으로 가입된다.
+// 이메일 + 비밀번호 로그인 API는 서버에 남아 있지만 화면에서는 쓰지 않는다.
 export default function LoginPage() {
-  const { login } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams] = useSearchParams();
   const socialError = searchParams.get('error');
 
-  const [form, setForm] = useState({ email: '', password: '' });
-  const [error, setError] = useState(socialError ? socialErrorMessage(socialError) : '');
-  const [busy, setBusy] = useState(false);
-
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    setBusy(true);
-    setError('');
-    try {
-      await login(form.email, form.password);
-      navigate(location.state?.from || '/', { replace: true });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
-    <AuthLayout title="로그인" subtitle="구독을 챙겨주는 작은 비서">
-      <Alert>{error}</Alert>
-      <form onSubmit={onSubmit} className="form">
-        <Field label="이메일">
-          <input type="email" autoComplete="email" required value={form.email}
-                 onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        </Field>
-        <Field label="비밀번호">
-          <input type="password" autoComplete="current-password" required value={form.password}
-                 onChange={(e) => setForm({ ...form, password: e.target.value })} />
-        </Field>
-        <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-          {busy ? '로그인 중...' : '로그인'}
-        </button>
-      </form>
-      <div className="divider"><span>또는</span></div>
-      <SocialButtons />
-      <div className="auth-links">
-        <Link to="/signup">회원가입</Link>
-        <Link to="/forgot-password">비밀번호 찾기</Link>
+    <div className="app">
+      <div className="splash">
+        <SplashArt />
+        <div className="splash-sheet">
+          <h2>펭귄 마을에 오신 걸 환영해요</h2>
+          <Alert>{socialError ? socialErrorMessage(socialError) : ''}</Alert>
+          <SocialButtons />
+          <p className="note">처음이면 자동으로 가입돼요</p>
+          <p className="note"><Link to="/privacy" className="muted">개인정보처리방침</Link></p>
+        </div>
       </div>
-    </AuthLayout>
+    </div>
   );
 }
