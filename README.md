@@ -1,128 +1,112 @@
-# 서비 (Subby)
+# 🐧 서비 (Subby)
 
-구독을 챙겨주는 작은 비서. OTT·AI·앱 정기 결제를 한곳에 등록하고, 이번 달 얼마가 언제 나가는지 보여주는 웹 서비스입니다.
+> **나의 구독, 놓치지 않게 챙겨주는 펭귄 비서**
+>
+> 흩어진 구독을 한곳에 모아, 결제일 전에 알려주고 매달 얼마 쓰는지 보여주는 구독 관리 서비스
 
-- 배포 주소: `https://subby-xxxx.onrender.com` (배포 후 실제 주소로 바꾸세요)
-- 무료 서버라 15분 동안 접속이 없으면 잠듭니다. **첫 접속은 최대 1분 정도 걸릴 수 있습니다.**
+🔗 **https://subby-xrje.onrender.com**
 
-## 주요 기능
+> 무료 서버라 한동안 접속이 없으면 잠들어요. 첫 접속은 최대 1분 정도 걸릴 수 있어요.
 
-| 영역 | 기능 |
-| --- | --- |
-| 회원 | Google·카카오 로그인(처음 로그인하면 자동 가입), 로그인 수단 연결·해제. 이메일 가입·로그인·비밀번호 재설정·5회 실패 잠금 API는 서버에 남아 있지만 화면에서는 쓰지 않음 |
-| 구독 | 등록·수정·삭제·해지, 매주·매월·매년 결제, 원화·달러 결제 |
-| 지출 | 다음 결제일, 이번 달 결제 예정액, 월 평균 환산액, 최근 6·12개월 월별 지출, 카테고리별 지출 |
-| 알림 | 결제 1·3·7일 전 사이트 안 알림(🔔) + 기기 웹 푸시(PWA), 기기별 켜기·끄기·테스트 |
+---
 
-## 기술 스택
+## 📌 프로젝트 소개
 
-- **Backend**: Java 21, Spring Boot 3.5, Spring Security, Spring Session JDBC, Spring Data JPA, Flyway, PostgreSQL 17
-- **Frontend**: React 19, React Router, Vite, Recharts
-- **Test**: JUnit 5, Mockito, Testcontainers(PostgreSQL)
-- **Infra**: Docker, Render(서버), Neon(DB), GitHub Actions(CI/CD, 예약 실행), Brevo(비밀번호 재설정 메일), Frankfurter(환율), Web Push(VAPID, JDK만으로 구현)
+**서비 (Subby)** 는 넷플릭스, 유튜브 프리미엄, ChatGPT 같은 정기결제를 한곳에서 관리하는 웹 서비스입니다.
+휴대폰 홈 화면에 추가하면 앱처럼 쓸 수 있습니다 (PWA).
 
-## 구조
+- 🗂 **구독 관리** — 매주·매월·매년 결제, 원화·달러 결제를 한곳에 등록
+- 🔔 **결제 알림** — 결제 1·3·7일 전에 휴대폰 푸시와 사이트 알림으로 안내
+- 📊 **지출 통계** — 이번 달 결제액, 월별 추이, 카테고리별 지출
+- 🔐 **간편 로그인** — Google·카카오로 바로 시작
 
-```
-사용자 브라우저 ──HTTPS──> Render (Spring Boot + React 빌드 파일) ──SSL──> Neon PostgreSQL
-                                   ▲
-GitHub ── PR·병합 ──> GitHub Actions (빌드·테스트) ── 통과 시 배포 훅 호출
-                      GitHub Actions (매일 09:17) ── POST /internal/jobs/daily (환율 수집 + 결제 알림)
-```
+---
 
-## 설계 결정
+## 🛠 기술 스택
 
-| 결정 | 이유 |
-| --- | --- |
-| 프론트와 백엔드를 **한 서버로 배포** | 주소가 하나라 CORS, 사이트 간 쿠키 문제, 배포 두 군데 관리가 사라진다 |
-| **세션 로그인 + DB 저장** (JWT 아님) | HttpOnly 쿠키라 스크립트가 탈취할 수 없고, 로그아웃·비밀번호 변경 시 서버에서 즉시 끊을 수 있다. 무료 서버는 자주 재시작되므로 세션을 메모리가 아닌 DB에 둔다 |
-| **CSRF 쿠키 방식** | 세션 쿠키를 쓰면 다른 사이트가 사용자 몰래 요청을 보낼 수 있다. XSRF-TOKEN 쿠키 값을 헤더로 보내게 해서 막는다 |
-| 같은 이메일 소셜 계정 **자동 합치기 안 함** | 가입 시 이메일 인증을 하지 않으므로, 남의 이메일로 먼저 가입해둔 공격자에게 계정이 넘어갈 수 있다. 연결은 로그인 상태에서만 |
-| 다른 사람 구독 요청은 **404** | 403을 주면 그 ID가 존재한다는 사실이 드러난다. 모든 조회에 `user_id` 조건을 건다 |
-| 로그인 실패 메시지 하나로 통일, 없는 이메일도 실패 횟수 기록 | 가입된 이메일을 알아낼 수 없게 한다 |
-| 금액은 **BigDecimal + numeric**, 통화를 함께 저장 | double은 0.1을 정확히 못 담아 합계가 틀어진다. 달러는 센트 단위가 있다 |
-| 다음 결제일은 **저장하지 않고 계산** | 매일 갱신하는 작업이 필요 없다. 첫 결제일 기준으로 계산해서 31일 구독이 28일로 굳지 않는다 |
-| 지난 결제는 결제일 환율, 앞으로의 결제는 최신 환율 | 과거 통계가 오늘 환율에 따라 바뀌지 않게 한다 |
-| 예약 작업을 **서버 스케줄러가 아니라 GitHub Actions**가 호출 | 무료 서버는 잠들면 스케줄러도 멈춘다. 외부 호출이 서버를 깨우면서 작업을 시킨다 |
-| 알림은 "N일 이내 + 아직 알림 없음" 조건 + DB 유니크 제약 | 예약 실행이 하루 빠져도 다음 날 알림이 가고, 두 번 실행돼도 중복 알림이 없다 |
-| 결제 알림은 메일 대신 **웹 푸시 + 사이트 안 알림** | 무료 메일은 스팸함으로 가기 쉽고, 카카오 알림톡은 사업자·건당 비용이 필요하다. 푸시는 무료이고 PWA로 앱처럼 받을 수 있다 |
-| 웹 푸시 암호화(RFC 8291)·VAPID(RFC 8292)를 **JDK만으로** 구현 | 라이브러리 의존성을 늘리지 않는다. 표준 구현(npm http_ece)과 같은 결과가 나오는지 테스트로 확인 |
-| 푸시 주소는 Google·Apple·Mozilla·Microsoft 푸시 서버만 허용 | 서버가 그 주소로 요청을 보내므로, 아무 주소나 받으면 내부망 공격 통로(SSRF)가 된다 |
-| 푸시 실패해도 재시도하지 않음, 404·410이면 기기 삭제 | 사이트 안 알림이 원본이고 푸시는 보조. 만료된 구독은 정리한다 |
-| 메일은 SMTP가 아닌 **Brevo HTTP API** | Render 무료 서버는 SMTP 포트가 막혀 있다 |
-| 비밀번호 재설정 토큰은 **해시만 저장**, 30분, 1회용, 재설정 시 모든 세션 종료 | DB가 유출돼도 링크를 만들 수 없고, 탈취된 로그인도 끊긴다 |
-| Spring Boot 3.5 | 4.x는 설정 방식이 많이 바뀌었다. 3.5는 2026년 6월 오픈소스 지원이 끝났으므로 다음 단계로 4.x 전환이 필요하다 |
+### Backend
 
-### 결제일 계산 규칙
+![Java](https://img.shields.io/badge/Java%2021-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot%203.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)
+![Spring Security](https://img.shields.io/badge/Spring%20Security-6DB33F?style=for-the-badge&logo=springsecurity&logoColor=white)
+![JPA](https://img.shields.io/badge/Spring%20Data%20JPA-6DB33F?style=for-the-badge&logo=spring&logoColor=white)
 
-- n번째 결제일 = 첫 결제일 + n주기. 그 달에 같은 날짜가 없으면 말일 (1/31 → 2/28 → 3/31)
-- 2월 29일 연간 구독은 평년에 2월 28일
-- 해지일 **당일과 그 이후** 결제는 계산하지 않는다
-- 날짜는 한국 시간 기준 (서버는 UTC)
+### Frontend
 
-## 로컬 실행
+![React](https://img.shields.io/badge/React%2019-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![PWA](https://img.shields.io/badge/PWA-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)
 
-필요: JDK 21, Node.js 22, Docker Desktop
+### Database
 
-```bash
-# 1. DB 실행
-docker compose up -d
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL%2017-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Neon](https://img.shields.io/badge/Neon-00E599?style=for-the-badge&logo=neon&logoColor=black)
+![Flyway](https://img.shields.io/badge/Flyway-CC0200?style=for-the-badge&logo=flyway&logoColor=white)
 
-# 2. 백엔드 실행 (http://localhost:8080)
-./gradlew bootRun
+### Infra & CI/CD
 
-# 3. 프론트 개발 서버 (http://localhost:5173, API는 8080으로 전달)
-cd frontend
-npm install
-npm run dev
-```
+![Render](https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=black)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+![JUnit5](https://img.shields.io/badge/JUnit5-25A162?style=for-the-badge&logo=junit5&logoColor=white)
+![Testcontainers](https://img.shields.io/badge/Testcontainers-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 
-- 메일 키가 없으면 메일 내용이 서버 로그에 출력됩니다. 비밀번호 재설정 링크도 로그에서 확인할 수 있습니다.
-- 소셜 로그인을 로컬에서 쓰려면 환경변수 `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`을 설정하고, 콘솔에 `http://localhost:8080/login/oauth2/code/{google|kakao}`를 등록한 뒤 `npm run build` 후 8080으로 접속하세요.
-- 기기 푸시를 로컬에서 쓰려면 `npx web-push generate-vapid-keys`로 키를 만들어 환경변수 `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`를 설정하세요. 키가 없어도 사이트 안 알림(🔔)은 동작합니다. 서비스 워커는 `npm run build` 후 8080으로 접속해야 확인할 수 있습니다(localhost는 https가 아니어도 허용됨).
-- 예약 작업 수동 실행: `curl -X POST -H "X-Job-Token: local-job-token" http://localhost:8080/internal/jobs/daily`
-- API 문서(로컬만): http://localhost:8080/swagger-ui.html
+---
 
-## 테스트
+## ✅ 주요 구현 기능
 
-```bash
-./gradlew test   # Docker Desktop이 켜져 있어야 함 (Testcontainers)
+| 구분 | 주요 기능 |
+|------|-----------|
+| 🔐 로그인 | Google·카카오 로그인, 처음 로그인 시 자동 가입, 로그인 수단 연결·해제 |
+| 🗂 구독 | 구독 등록·수정·해지·삭제, 자주 쓰는 서비스 선택, 서비스 로고 표시 |
+| 📅 결제일 | 첫 결제일 또는 다음 갱신일로 입력, 다음 결제일 자동 계산 |
+| 💱 환율 | 달러 결제를 원화로 환산 (지난 결제는 결제일 환율, 앞으로의 결제는 최신 환율) |
+| 🏠 대시보드 | 이번 달 구독료, 7일 안에 결제될 구독, 카테고리 비율 |
+| 📊 통계 | 월별 지출 추이, 카테고리별 지출 |
+| 🔔 알림 | 결제 1·3·7일 전 웹 푸시 + 사이트 안 알림, 기기별 푸시 켜기·끄기 |
+| 📱 PWA | 홈 화면에 추가해 앱처럼 사용, 아이폰·안드로이드 푸시 지원 |
+
+---
+
+## 🚀 배포 구조
+
+```text
+사용자 ──HTTPS──▶ Render (Spring Boot + React) ──▶ Neon PostgreSQL
+
+GitHub PR ──▶ GitHub Actions (빌드·테스트) ──통과 후 병합──▶ Render 자동 배포
+GitHub Actions (매일 오전 9시) ──▶ 환율 수집 + 결제 알림 발송
 ```
 
-## 배포
+- 프론트와 백엔드를 **한 서버로 배포**해서 주소 하나로 운영
+- **테스트를 통과한 코드만** main에 병합되고 자동 배포
+- 무료 서버가 잠들어도 매일 알림이 가도록 **예약 작업은 GitHub Actions가 호출**
 
-[docs/SETUP.md](docs/SETUP.md)에 Render, Neon, Google, 카카오, Brevo, GitHub 설정 순서를 정리했습니다.
+---
 
-## API
+## 💡 기술적으로 신경 쓴 부분
 
-| 메서드 | 경로 | 설명 |
-| --- | --- | --- |
-| POST | `/api/auth/signup` | 회원가입 (가입 후 바로 로그인) |
-| POST | `/api/auth/login` | 로그인 |
-| POST | `/api/auth/logout` | 로그아웃 |
-| GET | `/oauth2/authorization/{google\|kakao}` | 소셜 로그인 시작 (로그인 상태면 연결) |
-| POST | `/api/auth/password-reset/request` | 재설정 메일 요청 |
-| POST | `/api/auth/password-reset/confirm` | 새 비밀번호 설정 |
-| GET / PATCH | `/api/me` | 내 정보 / 닉네임 수정 |
-| GET | `/api/me/identities` | 연결된 소셜 계정 |
-| DELETE | `/api/me/identities/{provider}` | 소셜 연결 해제 |
-| GET / PUT | `/api/me/notification-settings` | 알림 설정 |
-| GET / POST | `/api/subscriptions` | 구독 목록(status, category 필터) / 등록 |
-| GET / PUT / DELETE | `/api/subscriptions/{id}` | 구독 상세 / 수정 / 삭제 |
-| POST | `/api/subscriptions/{id}/cancel` | 해지 |
-| GET | `/api/dashboard` | 대시보드 |
-| GET | `/api/stats/monthly?months=6` | 월별 결제액 |
-| GET | `/api/stats/categories?yearMonth=2026-11` | 카테고리별 결제액 |
-| GET | `/api/notifications` | 사이트 안 알림 목록(최근 50개) + 안 읽은 수 |
-| GET | `/api/notifications/unread-count` | 안 읽은 알림 수 |
-| POST | `/api/notifications/{id}/read` | 알림 읽음 |
-| POST | `/api/notifications/read-all` | 모두 읽음 |
-| GET | `/api/push/public-key` | VAPID 공개키, 서버 푸시 사용 가능 여부 |
-| POST | `/api/push/status` | 이 기기(endpoint)가 구독 중인지, 내 기기 수 |
-| POST | `/api/push/subscriptions` | 이 기기 푸시 등록 |
-| POST | `/api/push/unsubscribe` | 이 기기 푸시 해제 |
-| POST | `/api/push/test` | 내 모든 기기로 테스트 푸시 |
-| POST | `/internal/jobs/daily` | 환율 수집 + 결제 알림 (`X-Job-Token` 헤더) |
-| GET | `/actuator/health` | 상태 확인 |
+- **세션 로그인 + DB 저장** — HttpOnly 쿠키로 토큰 탈취를 막고, 서버가 자주 재시작돼도 로그인이 유지
+- **금액은 BigDecimal** — 원화·달러 합계에서 소수점 오차가 생기지 않게
+- **결제일은 저장하지 않고 계산** — 1월 31일 구독이 2월 28일 → 3월 31일로 정확히 돌아오게
+- **같은 결제는 한 번만 알림** — DB 유니크 제약으로 예약 작업이 두 번 돌아도 중복 알림 없음
+- **웹 푸시 암호화를 JDK만으로 구현** — 표준(RFC 8291·8292)과 같은 결과가 나오는지 테스트로 검증
+- **다른 사람의 구독은 404** — 존재 여부조차 드러나지 않게 모든 조회에 사용자 조건
 
-에러 응답은 RFC 9457 ProblemDetail 형식이며 `code`(분기용), `detail`(사용자 메시지), `errors`(입력 항목별 메시지)를 담습니다.
+상세 설계 기록은 [docs/DESIGN.md](docs/DESIGN.md)에 있습니다.
+
+---
+
+## 🧪 테스트
+
+- JUnit 5, Mockito 기반 단위 테스트
+- MockMvc 기반 API·인증 테스트
+- Testcontainers로 실제와 같은 PostgreSQL에서 통합 테스트
+- PR마다 GitHub Actions에서 자동 실행, 실패하면 병합 불가
+
+---
+
+## 📄 문서
+
+- [로컬 개발 방법](docs/DEVELOPMENT.md)
+- [배포·외부 서비스 설정](docs/SETUP.md)
+- [설계 결정](docs/DESIGN.md)
